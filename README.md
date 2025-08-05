@@ -1134,4 +1134,279 @@ This session deep dives into advanced S3 features and best practices that cloud 
 | **Cost Optimization**      | Use right storage class; monitor usage; optimize lifecycle policies |
 
 
+## 🖥️ What is EC2?
+
+**Amazon EC2 (Elastic Compute Cloud)** is a web service that provides **resizable compute capacity in the cloud**. It allows you to **launch virtual servers** (called *instances*) on-demand and scale them based on your needs.
+
+---
+
+## 📌 Key Concepts
+
+| Term                            | Description                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| **Instance**                    | A virtual server in the cloud.                                                      |
+| **AMI (Amazon Machine Image)**  | A template with OS, software, and settings used to launch an instance.              |
+| **Instance Type**               | Defines CPU, memory, storage, and network capacity (e.g., t2.micro, m5.large).      |
+| **EBS (Elastic Block Store)**   | Persistent storage for your instances. Like a hard disk.                            |
+| **Security Groups**             | Acts as a virtual firewall to control traffic to/from EC2.                          |
+| **Key Pair**                    | Used to SSH (login) into instances securely.                                        |
+| **Elastic IP**                  | A static public IP that can be attached to an instance.                             |
+| **User Data**                   | Script you can run during instance boot to automate setup (e.g., install software). |
+| **Elastic Load Balancer (ELB)** | Distributes traffic across multiple EC2 instances.                                  |
+| **Auto Scaling**                | Automatically increases/decreases the number of instances based on load.            |
+
+---
+
+## 🧾 EC2 Instance Types
+
+Amazon EC2 offers different instance types optimized for different use cases:
+
+| Instance Family                            | Use Case                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| **General Purpose** (e.g., t4g, t3, m5)    | Balanced CPU, memory, and networking. Good for web apps, small DBs. |
+| **Compute Optimized** (e.g., c7g, c6i)     | High performance CPUs. Good for compute-intensive tasks.            |
+| **Memory Optimized** (e.g., r6g, x2idn)    | More memory. Used for large DBs, caching, in-memory processing.     |
+| **Storage Optimized** (e.g., i4i, d3)      | High IOPS or throughput. Good for NoSQL, OLTP, etc.                 |
+| **Accelerated Computing** (e.g., p4, inf2) | GPU-based. Ideal for ML, video processing, HPC.                     |
+
+---
+
+## 🧰 EC2 Use Cases
+
+* Host websites and APIs
+* Run backend services
+* Deploy databases and caching systems
+* Machine Learning model training and inference
+* Video encoding/processing
+* Game server hosting
+
+---
+
+## 📋 How to Launch an EC2 Instance (Manually)
+
+1. **Log in to AWS Console**
+2. Navigate to **EC2 Dashboard**
+3. Click **Launch Instance**
+4. Choose:
+
+   * **AMI** (e.g., Amazon Linux, Ubuntu)
+   * **Instance Type** (e.g., t2.micro)
+   * **Key Pair** for SSH
+   * **Security Group** (allow ports like 22 for SSH, 80 for HTTP)
+   * **Storage** (default EBS volume)
+5. Launch and connect via SSH
+
+---
+
+## 💰 Pricing Overview
+
+### EC2 Pricing Models
+
+| Model                  | Description                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| **On-Demand**          | Pay by the hour/second. Best for short-term, unpredictable workloads.             |
+| **Reserved Instances** | Commit to 1- or 3-year usage for heavy discounts. Best for steady workloads.      |
+| **Spot Instances**     | Use spare capacity for up to 90% off. Best for flexible or batch jobs.            |
+| **Savings Plans**      | Flexible pricing model for compute usage (not just EC2). Commit for 1 or 3 years. |
+| **Free Tier**          | 750 hours/month of t2.micro or t3.micro for 12 months (for new AWS accounts).     |
+
+---
+
+## 🔐 Security Best Practices
+
+* Use **key pairs** and never share private keys.
+* Keep **security groups** minimal (e.g., only open port 22 to your IP).
+* Rotate **access credentials** regularly.
+* Use **IAM roles** for instances instead of embedding credentials in apps.
+* Enable **CloudWatch Logs** and **monitoring**.
+
+---
+
+## 📦 Storage Options for EC2
+
+| Storage Type                  | Description                                                              |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| **EBS**                       | Network-attached block storage. Persistent and resizable.                |
+| **Instance Store**            | Temporary disk attached to physical host. Lost on reboot/stop.           |
+| **EFS (Elastic File System)** | Shared file system across multiple instances.                            |
+| **S3**                        | Not directly attached, but often used to store backups, logs, or assets. |
+
+---
+
+## 📈 Monitoring and Logs
+
+* **Amazon CloudWatch** – Monitor CPU, memory, disk, and network.
+* **AWS CloudTrail** – Logs API calls.
+* **EC2 System Logs** – See boot errors and instance-level logs.
+
+---
+
+## 🚀 EC2 vs Other Compute Services
+
+| Service       | When to Use                                                         |
+| ------------- | ------------------------------------------------------------------- |
+| **EC2**       | Full control over OS, storage, software. Long-running applications. |
+| **Lambda**    | Serverless, event-driven short tasks. No server management.         |
+| **ECS / EKS** | For Docker container orchestration.                                 |
+| **Lightsail** | Simplified version of EC2 for small businesses or devs.             |
+
+---
+
+## 📍 Summary
+
+* EC2 gives you full control over your compute environment.
+* Offers flexibility in pricing, instance types, and OS/software.
+* Ideal for scalable, enterprise-level workloads.
+* Requires proper setup for security, cost optimization, and availability.
+
+---
+
+
+## 🚀 Spring Boot App Deployment to EC2 using S3 Pre-Signed URL (100% UI + minimal EC2 CLI)
+
+### ✅ Overview
+
+This guide helps you:
+
+* Upload a Spring Boot `.jar` to S3
+* Generate a **pre-signed URL**
+* Launch an EC2 instance
+* Use **EC2 Instance Connect** to access EC2 from browser
+* Download and run the app using `wget` with the URL
+
+---
+
+## 📋 Step-by-Step Instructions
+
+---
+
+### 🔧 1. **Build Your Spring Boot JAR**
+
+* In your IDE, run:
+
+  ```
+  ./mvnw clean package
+  ```
+* Locate the final `.jar` file in `target/`.
+
+---
+
+### 🪣 2. **Upload JAR to S3**
+
+1. Go to AWS Console → **S3**
+2. Click **Create bucket**
+
+   * Bucket name: e.g., `springboot-app-artifacts`
+   * Region: Same as your EC2 instance (e.g., `ap-south-1`)
+   * Keep block public access **enabled**
+   * Click **Create bucket**
+3. Open the bucket → Click **Upload**
+4. Select your Spring Boot `.jar` file and upload it.
+
+---
+
+### 🔑 3. **Generate Pre-signed URL for Download**
+
+1. In S3, go to the uploaded file.
+2. Click the file name → Actions → **Share with a pre-signed URL**
+3. Choose expiration time (e.g., 1 hour)
+4. Copy the generated **pre-signed URL**.
+
+---
+
+### 💻 4. **Launch EC2 Instance**
+
+1. Go to AWS Console → **EC2** → **Instances**
+2. Click **Launch Instance**
+3. Set:
+
+   * Name: `springboot-instance`
+   * OS: **Amazon Linux 2 AMI**
+   * Instance type: `t2.micro` (Free Tier)
+   * Key pair: Create one (if needed)
+   * **Network settings:**
+
+     * Inbound rules: Add
+
+       * Port 22 (SSH)
+       * Port 8080 (for Spring Boot app)
+   * Click **Launch**
+
+---
+
+### 🔗 5. **Connect to EC2 via Instance Connect**
+
+1. Go to EC2 → Instances
+2. Select your instance → Click **Connect**
+3. Choose **EC2 Instance Connect (browser-based)** → Click **Connect**
+
+---
+
+### 🧲 6. **Download Spring Boot JAR using Pre-signed URL**
+
+Once connected in the browser shell:
+
+```bash
+# Use the pre-signed URL from step 3
+wget "https://springboot-app-artifacts.s3.ap-south-1.amazonaws.com/yourapp.jar?...signature=xyz"
+```
+
+---
+
+### ☕ 7. **Install Java (Amazon Linux 2)**
+
+Still in EC2 terminal:
+
+```bash
+sudo yum install java-1.8.0-openjdk -y
+```
+
+Verify:
+
+```bash
+java -version
+```
+
+---
+
+### 🚦 8. **Run Spring Boot Application**
+
+```bash
+java -jar yourapp.jar
+```
+
+* If your app is on port `8080`, and it's open in the security group, you can access:
+
+  ```
+  http://<EC2_PUBLIC_IP>:8080
+  ```
+
+---
+
+### 🔒 9. **Security Group Configuration Check**
+
+* Go to EC2 → Your Instance → Security tab → Click the security group
+* Inbound rules should allow:
+
+  * SSH (port 22)
+  * TCP (port 8080)
+
+---
+
+## ✅ Summary
+
+| Step | Description                                |
+| ---- | ------------------------------------------ |
+| 1    | Build your `.jar` locally                  |
+| 2    | Upload to S3 via UI                        |
+| 3    | Generate pre-signed URL                    |
+| 4    | Launch EC2 via UI                          |
+| 5    | Connect using **EC2 Instance Connect**     |
+| 6    | Download JAR using `wget <pre-signed-url>` |
+| 7    | Install Java                               |
+| 8    | Run the app using `java -jar`              |
+| 9    | Access your app from public IP             |
+
+---
+
 
