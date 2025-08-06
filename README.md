@@ -1,9 +1,5 @@
 # AWS(Amazon Web Service) Notes
 
-Here’s an improved and professionally structured version of your notes on **AWS IAM Identity Center (SSO)** and IAM concepts:
-
----
-
 # **🔐 AWS IAM Identity Center (SSO) – Comprehensive Notes**
 
 ## ✅ **Overview**
