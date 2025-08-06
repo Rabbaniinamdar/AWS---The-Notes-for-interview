@@ -1733,6 +1733,12 @@ wget "https://springboot-app-uploads.s3.amazonaws.com/backend-app.jar?...signedP
 java -jar backend-app.jar
 ```
 
+*Using nohup (Recommended for quick setups):
+```bash
+nohup java -jar yourapp.jar > output.log 2>&1 &
+```
+* This ignores hangups (logout/disconnect) and keeps your app running in the background.
+
 * Ensure no errors, and server binds to **port 8080**
 
 ---
