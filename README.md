@@ -1562,6 +1562,214 @@ java -jar yourapp.jar
 | 8    | Run the app using `java -jar`              |
 | 9    | Access your app from public IP             |
 
+
+# 🚀 Full Deployment Guide: Spring Boot App on AWS (EC2 + RDS + S3)
+
+## 🧾 Overview
+
+This guide explains how to deploy a Java Spring Boot **CRUD backend** application on **AWS Cloud**, using:
+
+* **Amazon EC2** – For hosting the Spring Boot app
+* **Amazon RDS (MySQL)** – As the relational database
+* **Amazon S3** – To transfer your app's JAR file from local system to EC2
+
 ---
 
+## 🛠️ Step-by-Step Deployment Guide
 
+---
+
+### ✅ 1. **Prepare Spring Boot App**
+
+* Use a prebuilt Spring Boot CRUD app (e.g., Product management).
+* Typical structure:
+
+  * `Product` entity → `ProductRepository` (JPA) → `ProductService` → `ProductController`
+* Test it locally using Postman and MySQL.
+
+---
+
+### ✅ 2. **Provision Amazon RDS (MySQL)**
+
+* Go to AWS Console → **RDS → Create Database**
+
+  * **Engine**: MySQL
+  * **Edition**: Standard Create
+  * **Tier**: Free Tier (if eligible)
+  * **Instance ID**: `productdb`
+  * **Master username/password**: Set and note securely
+  * **Public Access**: Yes (for development only)
+  * **Port**: 3306
+  * **Initial DB Name**: `product_db`
+
+#### 🔒 Edit RDS Security Group
+
+* Add **Inbound Rule**:
+
+  * Type: Custom TCP
+  * Port: 3306
+  * Source: **Your IP Address** (use `0.0.0.0/0` only for temporary testing)
+
+---
+
+### ✅ 3. **Verify RDS Connection**
+
+* Use **MySQL Workbench**:
+
+  * Hostname: RDS endpoint
+  * Port: 3306
+  * Username: `admin`
+  * Password: (set above)
+  * Test connection and check database visibility
+
+---
+
+### ✅ 4. **Update Application Configuration**
+
+In `application.properties`:
+
+```properties
+spring.datasource.url=jdbc:mysql://<RDS-ENDPOINT>:3306/product_db
+spring.datasource.username=admin
+spring.datasource.password=<your-password>
+```
+
+* Run locally to confirm integration with RDS
+
+---
+
+### ✅ 5. **Build the Spring Boot App**
+
+```bash
+mvn clean install
+```
+
+* Output: `.jar` file located in `target/` (e.g., `backend-app.jar`)
+
+---
+
+### ✅ 6. **Upload JAR to Amazon S3**
+
+#### 🪣 Create S3 Bucket
+
+* Go to **S3 → Create bucket**
+
+  * Unique bucket name (e.g., `springboot-app-uploads`)
+  * Region: Same as EC2
+  * Block Public Access: Keep **enabled**
+  * No need for versioning/static website
+
+#### 📤 Upload JAR File
+
+* Upload your `backend-app.jar` to the bucket
+
+#### 🔗 Create a Pre-Signed URL
+
+* From the S3 Console:
+
+  * Select the JAR file → **Actions → Share with a pre-signed URL**
+  * Set expiration time (e.g., 1 hour)
+  * Copy the URL
+
+---
+
+### ✅ 7. **Provision EC2 Instance**
+
+#### 🚀 Launch EC2
+
+* AWS Console → EC2 → Launch Instance
+
+  * Name: `springboot-backend`
+  * AMI: **Amazon Linux 2 AMI**
+  * Instance type: `t2.micro` (Free Tier)
+  * Key pair: Create/download `.pem` file
+  * Security group:
+
+    * Allow **SSH (22)** from your IP
+    * Allow **TCP (8080)** from `0.0.0.0/0` (or your IP)
+
+#### 🌐 Get Public IP/DNS
+
+* Note public IPv4 or public DNS of the EC2 instance
+
+---
+
+### ✅ 8. **Connect to EC2 Instance**
+
+* Use **EC2 Instance Connect** (no CLI/SSH needed):
+
+  * AWS Console → EC2 → Connect → EC2 Instance Connect
+
+---
+
+### ✅ 9. **Install Java on EC2**
+
+```bash
+sudo dnf install java-17-amazon-corretto -y
+java -version
+```
+
+---
+
+### ✅ 10. **Download JAR from S3**
+
+Use `wget` with your **pre-signed URL** inside EC2:
+
+```bash
+wget "<pre-signed-url>"
+```
+
+> Example:
+
+```bash
+wget "https://springboot-app-uploads.s3.amazonaws.com/backend-app.jar?...signedParams..."
+```
+
+---
+
+### ✅ 11. **Run the Spring Boot App**
+
+```bash
+java -jar backend-app.jar
+```
+
+* Ensure no errors, and server binds to **port 8080**
+
+---
+
+### ✅ 12. **Test the Deployment**
+
+Use Postman or browser:
+
+```http
+http://<EC2-PUBLIC-IP>:8080/api/products
+```
+
+* Test CRUD operations
+
+---
+
+## 🔐 Key Security & Best Practices
+
+| Resource | Setting                            | Recommendation                             |
+| -------- | ---------------------------------- | ------------------------------------------ |
+| **RDS**  | Public Access                      | Yes (for dev), **No for production**       |
+|          | Security Group                     | Only allow port 3306 from trusted IPs      |
+| **EC2**  | Public Access                      | OK for app testing; restrict in production |
+|          | Security Group                     | Allow port 8080 only from your IP          |
+| **S3**   | Pre-Signed URL for secure download | ✅ Used instead of public access            |
+| **IAM**  | Create roles for production access | Avoid using root or admin long-term        |
+
+---
+
+## ✅ Summary Table
+
+| Component        | Purpose                                 |
+| ---------------- | --------------------------------------- |
+| Spring Boot      | Backend app providing CRUD API          |
+| Amazon RDS       | Cloud-based MySQL database              |
+| Amazon EC2       | Virtual machine to host the application |
+| Amazon S3        | Temporary file storage for deployment   |
+| Instance Connect | UI-based SSH alternative for EC2 access |
+
+---
