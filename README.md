@@ -1778,4 +1778,192 @@ http://<EC2-PUBLIC-IP>:8080/api/products
 | Amazon S3        | Temporary file storage for deployment   |
 | Instance Connect | UI-based SSH alternative for EC2 access |
 
+
+## 🧠 **AWS ELB & Auto Scaling Groups**
+
+### 🔁 **Scalability**
+
+* **Vertical Scaling**: This involves upgrading a single EC2 instance to a more powerful type (e.g., from `t2.micro` to `m5.large`) to handle more load. It’s quick but has limitations—there’s a ceiling to how much you can upgrade.
+* **Horizontal Scaling**: This means adding more instances behind a Load Balancer to spread the traffic. It’s more flexible and fault-tolerant, ideal for high-traffic or dynamic applications.
+
+### ✅ **High Availability (HA)**
+
+* High Availability ensures that your application remains **accessible even during failures**.
+* By deploying EC2 instances in **multiple Availability Zones (AZs)**, your system stays resilient against outages in a single AZ.
+* AWS services like **Elastic Load Balancer (ELB)** and **Auto Scaling Groups (ASG)** play a central role in achieving HA.
+
+### 🎯 **Elastic Load Balancer (ELB)**
+
+* **Acts as the single public-facing entry point** to your application.
+* Distributes traffic intelligently across multiple backend EC2 instances.
+* Performs **health checks** and routes traffic only to healthy instances.
+* Increases resilience and allows scaling without downtime.
+
+### 🚀 **Auto Scaling Group (ASG)**
+
+* Automatically manages the number of EC2 instances in response to load.
+* Ensures a **minimum number of healthy instances** are always running.
+* Can scale out (add instances) or scale in (remove instances) based on policies like CPU usage or request count.
+* Provides **self-healing capability** by replacing failed instances.
+
 ---
+
+## ⚙️ **Hands-On: Step-by-Step Infrastructure Setup**
+
+### 🔧 A. **Launching EC2 Instances**
+
+1. Go to **EC2 Dashboard** → “Launch Instance”.
+
+2. Choose **Amazon Linux 2 AMI** (Free Tier eligible).
+
+3. Under **User Data**, insert the following script to install Apache and create a simple HTML page showing the hostname:
+
+   ```bash
+   #!/bin/bash
+   yum install -y httpd
+   systemctl start httpd
+   systemctl enable httpd
+   echo "<h1>Server: $(hostname)</h1>" > /var/www/html/index.html
+   ```
+
+4. **Security Group Setup**:
+
+   * Allow inbound **HTTP (port 80)** from **0.0.0.0/0** to enable web access.
+
+5. Launch **two instances** to simulate load distribution.
+
+6. Open both instances in your browser using their **public IPs**. Each should display a unique hostname, confirming setup success.
+
+---
+
+### 🌐 B. **Creating an Elastic Load Balancer (ELB)**
+
+1. Go to **EC2 Dashboard** → **Load Balancers** → “Create Load Balancer”.
+
+2. Choose **Application Load Balancer (ALB)**:
+
+   * Scheme: **Internet-facing**
+   * Listener: **HTTP (port 80)**
+   * Select the **Availability Zones** where your EC2 instances are running.
+
+3. Create a **Security Group for the ELB**:
+
+   * Allow **HTTP (port 80)** from anywhere.
+
+4. **Create a Target Group**:
+
+   * Protocol: **HTTP**
+   * Port: **80**
+   * Register the two EC2 instances.
+   * Set **Health Check Path** to `/` and protocol to HTTP.
+
+5. Review everything and **launch the Load Balancer**.
+
+6. Once active, access the **ELB DNS endpoint** in your browser. Refresh to observe the hostname switching, which confirms that load balancing is working.
+
+---
+
+### 🛠 C. **Troubleshooting ELB Issues**
+
+If the Load Balancer is not responding:
+
+* ✅ Check that the **ELB Security Group** allows HTTP inbound.
+* ✅ Ensure **EC2 Security Group** allows traffic from the ELB.
+* ✅ Verify that **instances are healthy** in the **Target Group**.
+* ✅ Confirm the **Apache server is running** and port 80 is accessible on each instance.
+
+---
+
+### 📦 D. **Create an Amazon Machine Image (AMI)**
+
+1. Choose one of your working EC2 instances.
+2. Go to **Actions** → **Create Image**.
+3. Name the AMI and proceed.
+4. This AMI acts as a **preconfigured template** for new EC2 instances in your Auto Scaling Group.
+
+---
+
+### 📑 E. **Create a Launch Template**
+
+1. Go to **EC2 Dashboard** → **Launch Templates** → “Create Launch Template”.
+
+2. Fill in:
+
+   * Template Name
+   * AMI ID (from previous step)
+   * Instance type (same as before)
+   * Security Group (same as EC2 instances)
+   * Optional: Add User Data if not baked into the AMI.
+
+3. Save the template.
+
+---
+
+### 📈 F. **Create the Auto Scaling Group (ASG)**
+
+1. Go to **EC2 Dashboard** → **Auto Scaling Groups** → “Create Auto Scaling Group”.
+
+2. Choose the **Launch Template** created earlier.
+
+3. Select **subnets** spanning multiple AZs for high availability.
+
+4. Attach the **existing Load Balancer** and its Target Group.
+
+5. Configure **desired capacity settings**:
+
+   * Desired: `2`
+   * Minimum: `1`
+   * Maximum: `3`
+
+6. Add **Scaling Policies**:
+
+   * Example: Scale out if **average CPU usage > 50%** for 5 minutes.
+   * Scale in if CPU usage drops below 20%.
+
+7. Create the ASG.
+
+---
+
+### 🔍 G. **Testing Auto Scaling Behavior**
+
+* **Manually stop an instance** → ASG should launch a new one automatically.
+* **Simulate heavy load** → If metrics exceed thresholds, new instances will be launched.
+* Monitor instance count and scaling events via **EC2 → Auto Scaling Groups → Activity History**.
+
+---
+
+## 🧾 **Summary Table of Key Actions**
+
+| Step                   | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| Launch EC2 Instances   | Set up base servers with a web server and simple HTML page |
+| Configure Security     | Allow HTTP traffic to/from ELB and EC2                     |
+| Create ELB             | Distribute traffic across healthy backend servers          |
+| Create Target Group    | Register EC2s and perform health checks                    |
+| Create AMI             | Snapshot of configured instance for reuse                  |
+| Create Launch Template | Blueprint for launching instances in ASG                   |
+| Create Auto Scaling    | Automatically adjusts instance count based on demand       |
+| Attach to ELB          | Ensures new instances receive traffic immediately          |
+| Test Resilience        | Validate auto-healing and scaling based on load            |
+
+---
+
+## ✅ **Best Practices You Should Follow**
+
+* 🧩 **Deploy across multiple AZs** to ensure maximum availability and fault tolerance.
+* 🔒 **Expose only the Load Balancer to the internet**. Keep EC2 instances in private subnets if possible.
+* 🔐 **Use security groups wisely**: Let only the ELB talk to EC2 on port 80.
+* 📊 **Enable CloudWatch monitoring** for instance health, scaling triggers, and alarms.
+* 💰 **Control costs** by setting sensible scaling limits and utilizing spot instances if feasible.
+
+---
+
+## 🏁 Final Words
+
+By following this guide, you can build a **robust, production-ready architecture** on AWS that is:
+
+* ✅ **Scalable** – Adjusts capacity automatically
+* ✅ **Highly Available** – Survives AZ failures
+* ✅ **Cost-efficient** – Scales in when not needed
+* ✅ **Self-healing** – Automatically replaces failed components
+
