@@ -1967,3 +1967,161 @@ By following this guide, you can build a **robust, production-ready architecture
 * ✅ **Cost-efficient** – Scales in when not needed
 * ✅ **Self-healing** – Automatically replaces failed components
 
+
+## ✅ Deploy a **Spring Boot application JAR** hosted in a **private S3 bucket** to **EC2 instances**, so that:
+
+* EC2 instances **download** the JAR on boot.
+* The JAR is executed **automatically**.
+* You **don't** have to manually SSH or run any command.
+
+---
+
+## 🧱 Prerequisites
+
+| Item            | Description                                |
+| --------------- | ------------------------------------------ |
+| Spring Boot JAR | Stored in S3 bucket (private for security) |
+| EC2 instance    | Amazon Linux 2 preferred                   |
+| IAM Role        | For EC2 to access private S3               |
+| Security Group  | To allow HTTP (port 8080) access           |
+
+---
+
+## 📦 Step 1: Upload Your JAR to S3
+
+1. Go to [S3 Console](https://s3.console.aws.amazon.com/s3/)
+2. Create a bucket or use an existing one (e.g., `springbootmysqlproduct`)
+3. Upload your JAR file (e.g., `backend-app.jar`)
+4. Make **sure it remains private** for security
+
+---
+
+## 🛡️ Step 2: Create IAM Role for EC2
+
+1. Go to **IAM Console** → **Roles**
+2. Click **Create Role**
+3. **Trusted Entity**: Select **EC2**
+4. **Permissions**: Attach `AmazonS3ReadOnlyAccess`
+5. Name the role something like `EC2S3AccessRole`
+6. Click **Create Role**
+
+---
+
+## 💻 Step 3: Launch EC2 Instance
+
+1. Go to [EC2 Console](https://console.aws.amazon.com/ec2/)
+2. Click **Launch Instance**
+3. **Name**: `springboot-app-server`
+4. **AMI**: Amazon Linux 2
+5. **Instance Type**: t2.micro (free tier) or higher
+6. **Key Pair**: Select/create a key pair
+7. **Network Settings**:
+
+   * Edit Security Group
+   * Allow:
+
+     * SSH (22) — from your IP
+     * HTTP (80) — optional
+     * Custom TCP (8080) — from anywhere or your IP
+8. **Advanced Details** → Expand **User Data**
+9. Paste this script:
+
+```bash
+#!/bin/bash
+yum update -y
+yum install -y java-17-amazon-corretto aws-cli
+
+mkdir -p /home/ec2-user/app
+
+aws s3 cp s3://springbootmysqlproduct/backend-app.jar /home/ec2-user/app/backend-app.jar
+
+nohup java -jar /home/ec2-user/app/backend-app.jar > /home/ec2-user/app/app.log 2>&1 &
+```
+
+10. **IAM Role**: Attach `EC2S3AccessRole` from earlier
+11. Click **Launch Instance**
+
+---
+
+## 🌐 Step 4: Access Your Application
+
+Once the instance is **running and initialized**:
+
+1. Get the **Public IPv4 address** of your instance.
+2. Open your browser and visit:
+
+```
+http://<PUBLIC-IP>:8080/
+```
+
+✅ Your Spring Boot app should be running.
+
+---
+
+## 🧪 Step 5: Test & Validate
+
+SSH into the EC2 (optional):
+
+```bash
+ssh -i your-key.pem ec2-user@<PUBLIC-IP>
+```
+
+Check the application logs:
+
+```bash
+cat /home/ec2-user/app/app.log
+```
+
+---
+
+## 🔁 Optional: Keep App Running After Reboot
+
+To make sure your app runs after reboot as well:
+
+1. Create a `systemd` service (optional enhancement)
+2. Or modify `rc.local` (legacy way)
+
+But for now, since EC2 uses **User Data**, every new EC2 will start it fresh.
+
+---
+
+## ❗ Common Issues & Fixes
+
+| Problem                           | Fix                                                    |
+| --------------------------------- | ------------------------------------------------------ |
+| `Unable to locate credentials`    | You didn’t attach IAM Role                             |
+| `Error: Unable to access jarfile` | JAR not downloaded due to wrong path                   |
+| `Connection refused`              | App crashed or port 8080 not allowed                   |
+| No logs                           | Check if the script is added to **User Data** properly |
+
+---
+
+## 🔐 Security Best Practices
+
+* Never expose your JAR publicly on S3 unless testing.
+* Use IAM Role instead of hardcoding AWS credentials.
+* Limit inbound traffic (port 8080) to your IP in Security Group.
+
+---
+
+## 🧰 Useful AWS CLI Commands (for testing manually)
+
+```bash
+# Download from S3
+aws s3 cp s3://springbootmysqlproduct/backend-app.jar .
+
+# Run the JAR
+java -jar backend-app.jar
+```
+
+---
+
+## ✅ Final Summary
+
+| Task                  | Done Automatically?           |
+| --------------------- | ----------------------------- |
+| Download JAR from S3  | ✅ via user-data script        |
+| Install Java          | ✅ via script                  |
+| Run JAR               | ✅ via script (`nohup`)        |
+| App restart on reboot | ❌ (can be added with systemd) |
+| Public Access         | ✅ if port 8080 is open in SG  |
