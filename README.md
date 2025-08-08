@@ -2321,18 +2321,29 @@ When you deploy a Spring Boot JAR on Elastic Beanstalk:
 4. If CPU/memory spikes, **Auto Scaling** launches more instances using the same AMI/config.
 
 ---
+### **1. Prepare Your Spring Boot Application (WAR Packaging)**
 
-## **4. Step-by-Step Deployment for Spring Boot**
+* Spring Boot by default produces a **JAR** (with embedded Tomcat). But for Elastic Beanstalk’s **Tomcat platform**, you need a **WAR** file.
+* This is done by:
 
-### **Step 1: Prepare Your Application**
+  * Setting `<packaging>war</packaging>` in your `pom.xml`
+  * Create `ServletInitializer ` class which extends `ServletInitializer` in your `main package` so Spring Boot can work with external servlet containers (like Tomcat).
 
-```bash
-mvn clean package
+```java
+@SpringBootApplication
+public class ServletInitializer extends SpringBootServletInitializer {
+    @Override
+    protected SpringApplicationBuilder configure(SpringApplicationBuilder app) {
+        return app.sources(MyApplication.class);
+    }
+}
 ```
 
-* Produces `target/myapp.jar`.
-* Keep the app **stateless** — no storing session/data in the instance itself.
+* Build the WAR file with:
 
+```bash
+mvn clean install
+```
 ---
 
 ### **Step 2: Create Elastic Beanstalk Application**
