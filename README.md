@@ -2466,4 +2466,179 @@ With EB:
 ✅ **Bottom Line**:
 Elastic Beanstalk is your **"Java autopilot"** — fast deployments, built-in scaling, zero-downtime rollouts, monitoring, and rollback — without needing to become a full-time AWS DevOps engineer.
 
+# **AWS Route 53 – Beginner to Hands-On Guide**
+
+## **1. What is AWS Route 53?**
+
+AWS Route 53 is Amazon’s **scalable, highly available DNS web service**.
+It helps you:
+
+* **Register domains** (buy & manage domain names)
+* **Route traffic** to AWS or non-AWS resources
+* **Perform health checks** to ensure high availability
+* **Apply routing policies** for performance and failover
+
+**Why “53”?** → Named after **port 53**, the default port for DNS.
+
+---
+
+## **2. Core Concepts**
+
+* **Domain Name**: Human-readable address (e.g., `myapp.com`).
+* **DNS Record**: Mapping between a domain/subdomain and an IP address or service.
+* **Hosted Zone**: A container in Route 53 for DNS records of a domain.
+* **Nameservers (NS)**: Special DNS servers that store the authoritative records for your domain.
+
+---
+
+## **3. Step-by-Step Deployment Using Route 53**
+
+### **Step 1 – Understand DNS Basics**
+
+* Browsers don’t understand domain names, only IPs.
+* DNS translates names (`myapp.com`) → IP (`13.54.21.101`).
+
+---
+
+### **Step 2 – Get a Domain**
+
+You can:
+
+1. **Buy via Route 53** (paid annually, easy AWS integration)
+2. **Use third-party registrar** (GoDaddy, Hostinger, Namecheap, etc.)
+
+---
+
+### **Step 3 – Deploy Your App**
+
+For example:
+
+* Launch an **EC2 instance**.
+* Deploy your application (e.g., Spring Boot JAR or web server).
+* Verify the app is reachable via **EC2 public IP**.
+
+---
+
+### **Step 4 – Create a Hosted Zone**
+
+* Go to **AWS Console → Route 53 → Hosted Zones → Create Hosted Zone**.
+* Enter your domain name.
+* Select **Public Hosted Zone** for internet-facing apps.
+* AWS gives you **4 NS records** (nameservers).
+
+---
+
+### **Step 5 – Update Nameservers at Domain Registrar**
+
+* If domain is on Route 53 → already set.
+* If domain is external:
+
+  * Go to your registrar’s **DNS settings**.
+  * Replace existing NS records with Route 53’s NS records.
+* **Wait for DNS propagation** (can take 24–48 hrs).
+
+---
+
+### **Step 6 – Create DNS Records**
+
+Example for EC2:
+
+* Record Type: **A Record**
+* Name: `@` (for root domain) or `www`
+* Value: EC2 public IPv4
+* TTL: Default (300s)
+* Save.
+
+Example for S3 website:
+
+* Use **Alias Record** pointing to S3 website endpoint.
+
+---
+
+### **Step 7 – Optional Routing Policies**
+
+You can route traffic smartly:
+
+* **Simple** → One IP/endpoint.
+* **Weighted** → Split traffic (e.g., 70% → server A, 30% → server B).
+* **Latency-based** → Choose nearest/fastest server.
+* **Failover** → Send to backup if main fails.
+* **Geolocation** → Route based on user’s region.
+
+---
+
+### **Step 8 – Optional Health Checks**
+
+* Monitor endpoints (HTTP/HTTPS/TCP).
+* Mark unhealthy ones and reroute automatically.
+
+---
+
+### **Step 9 – Test**
+
+* Open your domain in a browser.
+* Use:
+
+  ```bash
+  nslookup myapp.com
+  dig myapp.com
+  ```
+
+  to verify DNS resolution.
+
+---
+
+### **Step 10 – Cleanup (to avoid charges)**
+
+* Delete hosted zones if not needed.
+* Remove health checks.
+* Cancel domain if it was for testing only.
+
+---
+
+## **4. Pricing for Learning**
+
+Route 53 **is not in the Free Tier**.
+Typical charges:
+
+* **Domain registration**: \$12/year+ (varies)
+* **Hosted Zone**: \$0.50/month
+* **DNS queries**: \~\$0.40 per million
+
+💡 **Learning Tip**: You can practice without buying a domain by:
+
+* Using a **private hosted zone** linked to a VPC (only works inside AWS).
+* Or using a temporary/cheap domain (e.g., `.xyz` for \$1–2/year).
+
+---
+
+## **5. How Route 53 Helps in Load Balancing**
+
+* Alone, Route 53 is **not a load balancer**.
+* Works **with AWS Elastic Load Balancer (ELB)**:
+
+  * DNS sends traffic to the ELB.
+  * ELB distributes requests across multiple EC2 instances.
+* With **Weighted** or **Latency-based routing**, Route 53 can send users to:
+
+  * Different regions (multi-region setup)
+  * Different servers based on network latency.
+
+---
+
+## **6. Quick Reference Table**
+
+| Step | Action             | Purpose                           |
+| ---- | ------------------ | --------------------------------- |
+| 1    | Understand DNS     | Map domain to IP                  |
+| 2    | Get domain         | Needed for public DNS             |
+| 3    | Deploy app         | Host your site/app                |
+| 4    | Create hosted zone | Manage DNS in AWS                 |
+| 5    | Update NS records  | Point domain to Route 53          |
+| 6    | Create DNS records | Direct traffic to AWS resource    |
+| 7    | Add routing policy | Optimize performance/failover     |
+| 8    | Add health checks  | Keep traffic on healthy endpoints |
+| 9    | Test DNS           | Verify setup                      |
+| 10   | Cleanup            | Avoid charges                     |
+
 
