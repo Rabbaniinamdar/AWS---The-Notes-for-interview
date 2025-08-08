@@ -2641,4 +2641,169 @@ Typical charges:
 | 9    | Test DNS           | Verify setup                      |
 | 10   | Cleanup            | Avoid charges                     |
 
+# **AWS CloudFront with S3 – Beginner’s Guide**
+
+## **Overview**
+
+AWS CloudFront is a **Content Delivery Network (CDN)** that caches your content at **edge locations** around the world.
+This reduces latency, improves performance, and scales delivery globally without you managing multiple servers.
+
+---
+
+## **Key Concepts**
+
+### **What is AWS CloudFront?**
+
+* A global CDN that delivers **static and dynamic content** quickly by caching it closer to users.
+* Works with origins like **S3**, **EC2**, **Elastic Beanstalk**, and **API Gateway**.
+
+### **Benefits**
+
+* **Faster performance** via global edge caching.
+* **Lower origin load** (S3/EC2 handles fewer requests).
+* **Scalable and reliable** delivery of static & dynamic content.
+* **Secure integration** with S3 using **Origin Access Control (OAC)** or **Origin Access Identity (OAI)**.
+* Can serve **large media files** (images, videos) efficiently.
+
+### **How Caching Works**
+
+* First request → CloudFront fetches from origin (cache miss) and stores it at nearest edge.
+* Subsequent requests from that region → Served directly from edge (cache hit).
+
+---
+
+## **Step-by-Step Setup – CloudFront with S3**
+
+### **1. Prepare Your Website Files**
+
+* Have your static website content ready:
+
+  * Example: `index.html`, `style.css`, `script.js`, images, etc.
+
+---
+
+### **2. Create an S3 Bucket**
+
+1. Go to **S3 Console → Create bucket**.
+2. Name it uniquely (e.g., `mywebsite312024`).
+3. Choose a region close to you.
+4. Keep **Block Public Access** ON (for security; we’ll give CloudFront access instead).
+5. Upload your website files.
+
+---
+
+### **3. Test S3 Hosting (Optional)**
+
+* You can enable **Static Website Hosting** in bucket properties to test.
+* Access the S3 website endpoint to verify files load.
+
+---
+
+### **4. Create a CloudFront Distribution**
+
+1. Go to **CloudFront Console → Create Distribution**.
+2. **Origin domain**: Select your S3 bucket.
+3. **Origin Access**: Choose **Origin Access Control (OAC)** → Create a new one.
+4. **Viewer protocol policy**: `Redirect HTTP to HTTPS`.
+5. **Allowed methods**: `GET, HEAD` (for static content).
+6. **Default root object**: `index.html`.
+
+---
+
+### **5. Update S3 Bucket Policy for OAC**
+
+* After creating OAC, CloudFront gives you a **bucket policy snippet**.
+* Go to **S3 → Bucket → Permissions → Bucket Policy** and paste the snippet:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "cloudfront.amazonaws.com"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceArn": "arn:aws:cloudfront::YOUR_ACCOUNT_ID:distribution/YOUR_DISTRIBUTION_ID"
+        }
+      }
+    }
+  ]
+}
+```
+
+---
+
+### **6. Deploy the Distribution**
+
+* Wait for **Status: Deployed** (may take \~10–15 minutes).
+* CloudFront will give you a domain like:
+
+  ```
+  d123exampleabcd.cloudfront.net
+  ```
+
+---
+
+### **7. Test Your Website**
+
+* Open the CloudFront URL in a browser.
+* First request might be slower (cache miss), but subsequent requests will be faster (cache hit).
+
+---
+
+### **8. Monitor Performance**
+
+* In **CloudFront Console → Monitoring**, check:
+
+  * Cache hit ratio
+  * Latency
+  * Error rates
+* Adjust cache behaviors if needed.
+
+---
+
+### **9. Optional: Custom Domain**
+
+1. In **AWS Certificate Manager (ACM)**, request a free SSL certificate for your domain.
+2. In CloudFront, add your domain under **Alternate domain names (CNAMEs)**.
+3. Point your domain’s DNS record (in Route 53 or another provider) to the CloudFront domain.
+
+---
+
+### **10. Cleanup (If No Longer Needed)**
+
+* Disable and delete the CloudFront distribution.
+* Empty and delete the S3 bucket.
+
+---
+
+## **Summary Table**
+
+| Step | Action                         | Purpose                          |
+| ---- | ------------------------------ | -------------------------------- |
+| 1    | Prepare website files          | Have HTML, CSS, JS, images ready |
+| 2    | Create S3 bucket               | Store website content securely   |
+| 3    | Test S3 hosting (optional)     | Verify file upload               |
+| 4    | Create CloudFront distribution | Connect S3 to global CDN         |
+| 5    | Update S3 bucket policy        | Allow CloudFront access          |
+| 6    | Deploy distribution            | Enable global edge caching       |
+| 7    | Test website                   | Verify via CloudFront URL        |
+| 8    | Monitor                        | Optimize cache behavior          |
+| 9    | Custom domain (optional)       | Use your own domain with SSL     |
+| 10   | Cleanup                        | Avoid extra AWS costs            |
+
+---
+
+## **Important Notes**
+
+* **Security**: Keep S3 bucket private and only allow CloudFront OAC access.
+* **Performance**: Use caching for static assets; dynamic content may require different TTL settings.
+* **Cost**: CloudFront free tier includes **1 TB/month data transfer out** for 12 months.
+* **Best Practice**: Use HTTPS (TLS) for secure delivery.
+
 
