@@ -2954,3 +2954,182 @@ It acts like a “black box recorder” for your AWS account.
 * **Ops Monitoring** – Troubleshoot AWS service issues.
 
 
+
+# **AWS VPC – Comprehensive Guide **
+
+## **1. What is AWS VPC?**
+
+A **Virtual Private Cloud (VPC)** is a *logically isolated network* in the AWS Cloud where you can launch AWS resources.
+
+Key Points:
+
+* Similar to having your own **data center in the cloud**.
+* Fully customizable network configuration (IP ranges, subnets, routing, gateways).
+* Similar concepts in other clouds: **Azure VNet**, **GCP VPC**.
+
+---
+
+## **2. Why Use a VPC?**
+
+AWS provides a **default VPC**, but most production systems require **custom VPCs** for better:
+
+* **Security** – isolation from other AWS customers.
+* **Control** – choose IP ranges, routing, and security rules.
+* **Customization** – design network architecture to fit business needs.
+
+---
+
+## **3. AWS Regions & Availability Zones (AZs)**
+
+* **Region** – A geographic location where AWS has multiple data centers (e.g., `ap-south-1` for Mumbai).
+* **Availability Zone** – A physically separate data center in a region, named like `ap-south-1a`, `ap-south-1b`.
+* **Best Practice** – Deploy resources across **multiple AZs** for high availability.
+
+---
+
+## **4. Step-by-Step VPC Setup**
+
+### **Step 1 – Choose a Region & Create VPC**
+
+* Select the region closest to your end users (lower latency).
+* Create a VPC with a **CIDR block** – e.g., `10.0.0.0/16`.
+
+### **Step 2 – Define CIDR Block**
+
+* **CIDR (Classless Inter-Domain Routing)** defines the IP range for your VPC.
+* `/16` → \~65,536 IPs | `/24` → 256 IPs.
+* Plan IP ranges to avoid conflicts with on-premises networks if you use **hybrid cloud**.
+
+### **Step 3 – Create Subnets**
+
+* **Subnet** = Sub-division of VPC IP range.
+* Types:
+
+  * **Public Subnet** – Has internet access via an Internet Gateway.
+  * **Private Subnet** – No direct internet access, used for databases or internal services.
+* Each subnet belongs to **only one AZ**.
+
+### **Step 4 – Launch Resources in Subnets**
+
+* EC2 instances must be placed **inside subnets**, not directly in the VPC.
+* Assign **Security Groups** for instance-level access control.
+
+---
+
+## **5. Routing Table**
+
+* A **Routing Table** decides how traffic flows.
+* Public subnet → route `0.0.0.0/0` via **Internet Gateway (IGW)**.
+* Private subnet → route via **NAT Gateway** if outbound internet is required.
+
+---
+
+## **6. Internet Gateway (IGW)**
+
+* Connects your VPC to the **public internet**.
+* Must:
+
+  1. Attach IGW to VPC.
+  2. Update **routing table** for public subnets.
+
+---
+
+## **7. Security Groups vs Network ACLs**
+
+| Feature          | Security Group                       | Network ACL                  |
+| ---------------- | ------------------------------------ | ---------------------------- |
+| Scope            | Instance level (ENI)                 | Subnet level                 |
+| Stateful?        | Yes (return traffic allowed)         | No (stateless)               |
+| Rules            | Allow only                           | Allow + Deny                 |
+| Default Behavior | Deny all inbound, allow all outbound | Allow all inbound & outbound |
+
+---
+
+## **8. NAT Gateway**
+
+* Used for **private subnets** needing outbound internet (e.g., software updates).
+* One-way communication – inbound internet traffic **is not allowed**.
+
+---
+
+## **9. VPC Peering**
+
+* Connects two VPCs **privately** without internet.
+* Can be **inter-region** or **intra-region**.
+* Use cases: microservices in separate VPCs, multi-region apps.
+
+---
+
+## **10. VPC Endpoints**
+
+* Enables **private connection** to AWS services without internet.
+* Types:
+
+  * **Interface Endpoint** – ENI with a private IP in your subnet.
+  * **Gateway Endpoint** – For S3 or DynamoDB.
+
+---
+
+## **11. Bastion Host**
+
+* EC2 instance in a **public subnet** used to SSH into private subnet instances.
+* Improves security by **avoiding direct public access** to private resources.
+
+---
+
+## **12. Elastic IPs**
+
+* A **static public IP** for your AWS resources.
+* Useful when you want an IP address that doesn’t change after EC2 restart.
+
+---
+
+## **13. VPC Flow Logs**
+
+* Captures network traffic metadata at:
+
+  * VPC level
+  * Subnet level
+  * ENI level
+* Helps with troubleshooting, compliance, and security analysis.
+
+---
+
+## **14. AWS Direct Connect & AWS Client VPN**
+
+* **Direct Connect** – Dedicated private link between your on-premises data center and AWS.
+* **Client VPN** – Managed VPN for remote access to AWS resources.
+
+---
+
+## **15. Real-World Architecture Example**
+
+* **Region**: Mumbai (`ap-south-1`).
+* **VPC CIDR**: `10.0.0.0/16`.
+* **Public Subnets**: For web servers (with IGW).
+* **Private Subnets**: For databases (with NAT Gateway).
+* **Bastion Host**: For secure SSH access.
+* **VPC Peering**: Connect to analytics VPC in another region.
+
+---
+
+## **16. Visual Architecture**
+
+```
+VPC (10.0.0.0/16)
+ ├── Public Subnet (10.0.1.0/24) - IGW - Web Servers
+ ├── Private Subnet (10.0.2.0/24) - NAT Gateway - Database
+ ├── Security Groups - Instance-level firewall
+ ├── Network ACLs - Subnet-level firewall
+ └── Bastion Host in Public Subnet → Access Private Instances
+```
+
+---
+
+## **17. Key Best Practices**
+
+* Always use **least privilege security rules**.
+* Spread resources across **multiple AZs** for fault tolerance.
+* Enable **VPC Flow Logs** for monitoring.
+* Use **VPC Endpoints** for private AWS service access.
+
