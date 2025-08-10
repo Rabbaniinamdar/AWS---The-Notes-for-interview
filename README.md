@@ -3133,3 +3133,243 @@ VPC (10.0.0.0/16)
 * Enable **VPC Flow Logs** for monitoring.
 * Use **VPC Endpoints** for private AWS service access.
 
+
+# 🚀 Deploying a Spring Boot Application on AWS ECS Using ECR and Google Jib (Maven)
+
+### 1️⃣ AWS Elastic Container Registry (ECR)
+
+* **What it is**: AWS’s private Docker-compatible registry for storing and managing container images.
+* **Why we need it**: ECS pulls your Spring Boot application’s Docker image from ECR to run it.
+* **Free Tier**: 500 MB/month private repo for 12 months, 50 GB/month public repo forever.
+
+---
+
+### 2️⃣ AWS Elastic Container Service (ECS)
+
+* **What it is**: AWS’s container orchestration service — think of it as the “manager” that runs your containers.
+* **Fargate vs EC2 launch types**:
+
+  * **Fargate** → Serverless, AWS manages the servers (no EC2 setup). You pay only for CPU/memory used.
+  * **EC2** → You provision EC2 instances to host containers yourself.
+* **Free Tier**: No special “free” allocation, but you can run very small workloads for pennies.
+
+---
+
+### 3️⃣ AWS Fargate
+
+* **What it is**: The compute engine for ECS that runs containers without managing servers.
+* **Why we use it here**: No need to create and manage EC2 instances.
+* **Cost control**: Small CPU/memory settings keep costs near zero for quick tests.
+
+---
+
+### 4️⃣ AWS Application Load Balancer (ALB)
+
+* **Purpose**: Distributes traffic from the internet to your ECS tasks.
+* **Bonus**: Can do health checks to restart unhealthy tasks automatically.
+
+---
+
+### 5️⃣ Google Jib
+
+* **What it is**: A Maven/Gradle plugin that builds optimized Docker/OCI images without a Dockerfile or Docker installed.
+* **Benefits**:
+
+  * No Docker daemon needed
+  * Layered builds → faster updates
+  * Integrates into Maven (`mvn compile jib:build`)
+
+---
+
+### 6️⃣ Flow of Deployment
+
+```
+Spring Boot Source Code → Jib → AWS ECR (image stored)
+                                      ↓
+                             AWS ECS Fargate (runs image)
+                                      ↓
+                             Application Load Balancer
+                                      ↓
+                                   End Users
+```
+
+---
+
+## 📖 Part 2 — Process
+
+Here’s the step-by-step AWS + Maven setup.
+
+---
+
+### **Step 0 — Prerequisites**
+
+* AWS CLI installed → `aws configure`
+* Java 17+, Maven installed
+* AWS account with Free Tier
+* Basic Spring Boot REST app ready
+
+---
+
+### **Step 1 — Create Spring Boot App**
+
+Use [Spring Initializr](https://start.spring.io):
+
+* Maven project
+* Java 17
+* Dependencies: Spring Web, Spring Boot Actuator
+
+Example controller:
+
+```java
+@RestController
+public class HelloController {
+    @GetMapping("/")
+    public String hello() {
+        return "Hello from Spring Boot in ECS!";
+    }
+
+    @GetMapping("/health")
+    public String health() {
+        return "Healthy";
+    }
+}
+```
+
+---
+
+### **Step 2 — Add Jib Plugin**
+
+In `pom.xml`:
+
+```xml
+<plugin>
+    <groupId>com.google.cloud.tools</groupId>
+    <artifactId>jib-maven-plugin</artifactId>
+    <version>3.4.1</version>
+    <configuration>
+        <to>
+            <image>ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO_NAME</image>
+        </to>
+    </configuration>
+</plugin>
+```
+
+Replace:
+
+* `ACCOUNT_ID` → Your AWS account ID
+* `REGION` → e.g., `us-east-1`
+* `REPO_NAME` → Your repo name
+
+---
+
+### **Step 3 — Create ECR Repository**
+
+```bash
+aws ecr create-repository --repository-name REPO_NAME --region REGION
+```
+
+---
+
+### **Step 4 — Authenticate to ECR**
+
+```bash
+aws ecr get-login-password --region REGION \
+  | docker login --username AWS --password-stdin ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com
+```
+
+---
+
+### **Step 5 — Build and Push Image**
+
+```bash
+mvn compile jib:build
+```
+
+✅ Your image is now in ECR.
+
+---
+
+### **Step 6 — Create ECS Cluster**
+
+* AWS Console → ECS → **Create Cluster**
+* Choose **Fargate**
+* Name it: `springboot-cluster`
+* Click **Create**
+
+---
+
+### **Step 7 — Create Task Definition**
+
+1. ECS → Task Definitions → **Create new**
+2. Launch type: **Fargate**
+3. CPU: `0.5 vCPU` | Memory: `1 GB`
+4. Add container:
+
+   * Image: `ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO_NAME:latest`
+   * Port: `8080`
+   * Health check:
+
+     ```
+     CMD-SHELL
+     curl -f http://localhost:8080/health || exit 1
+     ```
+5. Save
+
+---
+
+### **Step 8 — Create ECS Service**
+
+* Launch type: Fargate
+* Cluster: `springboot-cluster`
+* Task: Select your definition
+* Desired tasks: 1
+* Networking:
+
+  * VPC: default
+  * Subnets: public
+  * Public IP: enabled
+* Load Balancer:
+
+  * Create ALB
+  * Listener: HTTP 80
+  * Target group: Port 8080
+
+---
+
+### **Step 9 — Test**
+
+Get ALB DNS:
+
+```bash
+aws elbv2 describe-load-balancers --names my-alb --region REGION
+```
+
+Or AWS Console → EC2 → Load Balancers.
+
+Open:
+
+* `http://ALB-DNS/` → "Hello from Spring Boot in ECS!"
+* `http://ALB-DNS/health` → "Healthy"
+
+---
+
+### **Step 10 — Update App**
+
+* Make code changes
+* Run:
+
+  ```bash
+  mvn compile jib:build
+  ```
+* ECS → Service → Update → **Force new deployment**
+
+---
+
+### **Step 11 — Cleanup**
+
+Delete:
+
+* ECS service, task definition, cluster
+* ECR repo
+* ALB
+
